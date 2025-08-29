@@ -1,37 +1,61 @@
-from quart import Quart, request, jsonify, Response
-import asyncio
-
+import streamlit as st
+import requests, asyncio
 from client.orchestrator import orchestrator
 
-# initiate quart app
-app = Quart(__name__)
+# Set page title
+st.set_page_config(page_title="Daryl's Personal Assistant", page_icon="💬")
 
-# expose the model to open webUI
-@app.route("/chat/models", methods=["GET"])
-async def list_models():
-    return jsonify({
-        "object": "list",
-        "data": [
-            {
-                "id": "Daryl's Personal Assistant",
-                "object": "model",
-                "owned_by": "me",
-            }
-        ]
-    })
+# Initialize session state to store chat history
+if "messages" not in st.session_state:
+    st.session_state.messages = []
 
-# create endpoint to chat with the agent
-@app.route("/chat", methods=["POST"])
-async def chat():
-    data = await request.get_json()
-    user_id = data.get("user", "anon")
-    question = data.get("question", "")
+if "username" not in st.session_state:
+    st.session_state.username = "Guest"  # default username
 
-    async def generate():
-        async for chunk in orchestrator(user_id, question):
-            yield chunk
+# Layout: title on left, username input on right
+col1, col2 = st.columns([4, 1])
+with col1:
+    st.title("Chat with Daryl's Personal Assistant")
+with col2:
+    st.session_state.username = st.text_input(
+        "Username", 
+        st.session_state.username, 
+        label_visibility="collapsed",  # hide label
+        placeholder="Enter name..."
+    )
 
-    return Response(generate(), mimetype="text/event-stream")
+st.divider()
 
-if __name__ == "__main__":
-    app.run(host="0.0.0.0", port=5000, debug=True)
+# Display existing chat messages
+for msg in st.session_state.messages:
+    with st.chat_message(msg["role"]):
+        st.markdown(msg["content"])
+
+# Chat input box
+if question := st.chat_input("Type your message..."):
+    # Add user message to history
+    username = str(st.session_state.get("username", "Guest"))
+    st.session_state.messages.append({"role": "user", "content": question})
+    
+    # Display the user message
+    with st.chat_message("user"):
+        st.markdown(question)
+
+    # Generate text stream
+    with st.chat_message("assistant"):
+        response_box = st.empty()
+
+        async def run_stream():
+            full_response = ""
+            async for chunk in orchestrator(username, question):
+                # Assume your orchestrator yields text pieces
+                text_piece = str(chunk)
+                full_response += text_piece
+                response_box.markdown(full_response)
+            return full_response
+
+        # Run async stream and capture final text
+        response = asyncio.run(run_stream())
+
+    # Add bot message to history
+    st.session_state.messages.append({"role": "assistant", "content": response})

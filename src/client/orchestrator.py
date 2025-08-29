@@ -61,9 +61,9 @@ graph = asyncio.run(create_agent())
 
 # build the orchestrator
 async def orchestrator(user_id, question, model_name="qwen3:14b"):
-    graph = await create_agent()
-
     start_time = time.time()
+    global memory
+
     full_response = ""
 
     # initialize memory for user
@@ -71,6 +71,7 @@ async def orchestrator(user_id, question, model_name="qwen3:14b"):
         memory[user_id] = [HumanMessage(question)]
     else:
         memory[user_id].append(HumanMessage(question))
+    print(memory[user_id])
 
     # stream events from graph
     async for event in graph.astream_events(
@@ -86,6 +87,7 @@ async def orchestrator(user_id, question, model_name="qwen3:14b"):
 
     # save final assistant message
     memory[user_id].append(AIMessage(full_response))
+    print(memory[user_id])
 
     # optionally yield a final "done" event (OPENAI FORMAT)
     # yield "data: [DONE]\n\n"
