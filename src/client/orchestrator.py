@@ -42,7 +42,7 @@ async def create_agent(model_name = "qwen3:14b"):
 
         response = llm.invoke([system_prompt] + state["messages"])
 
-        return {"messages": response}
+        return {"messages": [response]}
 
     # Create react agent
     builder = StateGraph(MessagesState)

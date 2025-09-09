@@ -4,6 +4,7 @@ sqlalchemy
 psycopg2
 pandas
 langchain
+mcp
 langchain_ollama
 langchain_core
 langchain_community
